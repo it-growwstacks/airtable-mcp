@@ -1,0 +1,12 @@
+mcp[cli]
+google-auth
+google-auth-httplib2
+google-api-python-client
+python-dotenv
+structlog
+pydantic
+httpx
+PyJWT[crypto]
+requests
+clerk-backend-api
+supabase>=2.0.0

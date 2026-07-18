@@ -1,0 +1,29 @@
+{
+  "name": "ww-demo",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-15",
+
+  "containers": [
+    {
+      "class_name": "MCPContainer",
+      "image": "./Dockerfile",
+      "max_instances": 1
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MCP_CONTAINER",
+        "class_name": "MCPContainer"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["MCPContainer"]
+    }
+  ]
+}
