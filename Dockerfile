@@ -1,11 +1,15 @@
-# Dockerfile — Sheet-MCP (workwitness-sheets-mcp)
+# Dockerfile — Airtable-CRM-MCP (airtable-mcp)
 # Packages the Streamable HTTP server for deployment (Cloudflare Container / any
-# Docker host). Built against server.py after the Phase 3 transport flip —
-# this container listens on 0.0.0.0:8000 over HTTP, it does not speak stdio.
+# Docker host). This container listens on 0.0.0.0:8000 over HTTP.
 #
-# Secrets (.env, credentials.json) are NEVER copied into this image.
-# They are injected at container run time — see "What you must supply at
-# runtime" below. This keeps the image itself safe to store, share, or
+# READ-ONLY SERVER: this image only ever contains code that issues GET
+# requests to Airtable. See airtable_client.py header for the enforcement
+# of that rule.
+#
+# Secrets (.env, credentials.json, Airtable PAT, Clerk keys) are NEVER
+# copied into this image. They are injected at container run time via
+# environment variables / Cloudflare secrets — see "What you must supply
+# at runtime" below. This keeps the image itself safe to store, share, or
 # push to a registry with zero credentials inside it.
 
 FROM python:3.12-slim AS base
@@ -34,15 +38,15 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 # ── Copy application code ────────────────────────────────────────────────
-# Only the files the server actually imports. credentials.json and .env
-# are deliberately NOT copied — see the note at the top of this file.
-COPY server.py auth.py rate_limiter.py validators.py supabase_client.py \
+# Only the files the server actually imports. credentials.json, .env, and
+# any secrets are deliberately NOT copied — see the note at the top of
+
+COPY server.py auth.py rate_limiter.py validators.py airtable_client.py \
      error_codes.py audit_logger.py ./
 
 # audit_logs is created at runtime by audit_logger.py's os.makedirs() call,
 # but we pre-create it here and hand ownership to appuser so the non-root
 # user can actually write to it — without this, the first log write would
-# fail with a permissions error inside the container.
 RUN mkdir -p /app/audit_logs && chown -R appuser:appuser /app
 
 USER appuser
@@ -57,4 +61,4 @@ EXPOSE 8000
 # Matches server.py's own __main__ block exactly — no flags duplicated
 # here that are already set in code (host/port live in the FastMCP
 # constructor in server.py, not here).
-CMD ["python", "server.py"] 
+CMD ["python", "server.py"]
