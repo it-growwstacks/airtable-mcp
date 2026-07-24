@@ -1,5 +1,5 @@
 {
-  "name": "sheet-mcp",
+  "name": "airtable-mcp",
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy"

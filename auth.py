@@ -81,15 +81,12 @@ def verify_token(bearer_token: str | None) -> dict:
                 "verify_iss": True,
             }
         )
-        # After the claims = jwt.decode(...) block, add this one line:
-        print(f"DEBUG TOKEN CLAIMS: {claims}", flush=True)
-        # ── Check 7 — scope must include sheets:read or profile ───
+        # ── Check 7 — scope must include an approved scope ────────
         token_scope = claims.get("scope", "")
-        # Supabase OAuth tokens carry standard scopes (email, profile, openid)
-        # Any valid Supabase token from our project is accepted
-        if not token_scope and not claims.get("sub"):
-            log_auth_failure(reason="missing_scope")
-            raise AuthError(Errors.FORBIDDEN)
+        required_scopes = {"sheets:read", "airtable:read", "profile"}
+        if not any(s in token_scope.split() for s in required_scopes):
+            log_auth_failure(reason="missing_required_scope")
+            raise AuthError(Errors.FORBIDDEN, message="Token does not have the required scope.")
 
         return claims
 

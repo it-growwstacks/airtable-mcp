@@ -85,7 +85,7 @@ export default {
       }
     }
 
-    const id = env.MCP_CONTAINER.idFromName("ww-demo");
+    const id = env.MCP_CONTAINER.idFromName("airtable-mcp");
     const container = env.MCP_CONTAINER.get(id);
     return container.fetch(request);
   },
