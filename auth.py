@@ -83,7 +83,7 @@ def verify_token(bearer_token: str | None) -> dict:
         )
         # ── Check 7 — scope must include an approved scope ────────
         token_scope = claims.get("scope", "")
-        required_scopes = {"sheets:read", "airtable:read", "profile"}
+        required_scopes = {"crm:read", "profile"}
         if not any(s in token_scope.split() for s in required_scopes):
             log_auth_failure(reason="missing_required_scope")
             raise AuthError(Errors.FORBIDDEN, message="Token does not have the required scope.")
