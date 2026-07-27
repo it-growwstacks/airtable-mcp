@@ -61,23 +61,25 @@ def _fetch_all_permission_rows() -> list:
 
 
 def get_permissions_for_user(clerk_user_id: str) -> dict | None:
-    """
-    Looks up a Clerk user's permission row. Returns None if no row
-    exists or the row is marked inactive — callers MUST treat None
-    as "deny everything," never as "allow everything."
-    """
     rows = _fetch_all_permission_rows()
+    print(f"DEBUG: looking for clerk_user_id={clerk_user_id!r}", flush=True)
     for rec in rows:
         fields = rec.get("fields", {})
-        if str(fields.get("clerk_user_id", "")).strip() == clerk_user_id.strip():
+        row_id = str(fields.get("clerk_user_id", "")).strip()
+        print(f"DEBUG: comparing against row clerk_user_id={row_id!r}, active={fields.get('active')}", flush=True)
+        if row_id == clerk_user_id.strip():
             if not fields.get("active", False):
+                print("DEBUG: matched but marked inactive", flush=True)
                 return None
             allowed_raw = fields.get("allowed_tools", "")
+            print(f"DEBUG: allowed_tools raw value={allowed_raw!r}", flush=True)
             allowed_tools = {t.strip() for t in allowed_raw.split(",") if t.strip()}
+            print(f"DEBUG: parsed allowed_tools={allowed_tools!r}", flush=True)
             return {
                 "role": fields.get("role", "viewer"),
                 "allowed_tools": allowed_tools,
             }
+    print("DEBUG: no matching row found", flush=True)
     return None
 
 
