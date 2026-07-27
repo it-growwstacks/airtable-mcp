@@ -23,6 +23,8 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP, Context
 from starlette.responses import JSONResponse
+from permissions import check_tool_permission, PermissionError
+
 
 from error_codes import Errors
 from auth import verify_token, extract_bearer_token, AuthError
