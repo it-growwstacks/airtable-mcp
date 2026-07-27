@@ -42,7 +42,7 @@ RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 # any secrets are deliberately NOT copied — see the note at the top of
 
 COPY server.py auth.py rate_limiter.py validators.py airtable_client.py \
-     error_codes.py audit_logger.py ./
+     error_codes.py audit_logger.py permissions.py ./
 
 # audit_logs is created at runtime by audit_logger.py's os.makedirs() call,
 # but we pre-create it here and hand ownership to appuser so the non-root
