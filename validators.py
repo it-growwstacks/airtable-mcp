@@ -78,25 +78,6 @@ class GetClientProjectsInput(BaseModel):
     def strip(cls, v): return v.strip()
 
 
-class GetTaskInput(BaseModel):
-    task_ref: str = Field(min_length=1, max_length=200)
-
-    @field_validator("task_ref")
-    @classmethod
-    def strip(cls, v): return v.strip()
-
-
-class ListTasksByStatusInput(BaseModel):
-    status: str = Field(min_length=1)
-    limit: int = Field(default=20, ge=1, le=100)
-
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, v):
-        v = v.strip()
-        if v not in TASK_STATUS_VALUES:
-            raise ValueError(f"'{v}' is not a valid Task Status. Valid values: {sorted(TASK_STATUS_VALUES)}")
-        return v
 
 
 class SearchTasksInput(BaseModel):

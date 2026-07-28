@@ -317,6 +317,15 @@ def get_tasks_by_ids(record_ids: list) -> list:
             results.append(_flatten(rec, "Tasks"))
     return results
 
+def get_tasks_by_ids_unredacted(record_ids: list) -> list:
+    """Like get_tasks_by_ids, but returns unredacted flat dicts — used only
+    internally for reading Assignee Names / PM Name, never returned raw to a caller."""
+    results = []
+    for rid in record_ids:
+        rec = _fetch_record_by_id(TABLE_TASKS, rid)
+        if rec:
+            results.append(_flatten(rec, "Tasks", redact=False))
+    return results
 
 def validate_schema() -> None:
     checks = [
