@@ -329,29 +329,65 @@ def get_tasks_by_ids_unredacted(record_ids: list) -> list:
 
 def find_projects_by_person(person_name: str) -> list:
     """
-    Given an assignee or project manager's name (case-insensitive, fuzzy
-    match), returns the distinct set of Project record IDs they appear on,
-    found by scanning Tasks' Assignee Names / PM Name lookup fields.
+    Given an assignee or project manager's name, returns the distinct
+    set of Project record IDs they appear on. Uses Airtable's
+    filterByFormula to filter server-side instead of fetching the
+    entire Tasks table (which can be 1000+ rows) into memory.
     """
-    person_lower = person_name.strip().lower()
-    all_tasks = _fetch_all_records(TABLE_TASKS)
+    person_escaped = person_name.strip().replace("'", "\\'")
 
+    # Airtable formula: match if the name appears in either lookup field.
+    # FIND returns 0 if not found, so we check for >0. Case-insensitive
+    # via LOWER() on both sides.
+    formula = (
+        f"OR("
+        f"FIND(LOWER('{person_escaped}'), LOWER(ARRAYJOIN({{Assignee Names}}))) > 0, "
+        f"FIND(LOWER('{person_escaped}'), LOWER(ARRAYJOIN({{PM Name}}))) > 0"
+        f")"
+    )
+
+    url = f"{_API_ROOT}/{requests.utils.quote(TABLE_TASKS)}"
     matched_project_ids = set()
-    for rec in all_tasks:
-        fields = rec.get("fields", {})
-        assignee_names = fields.get("Assignee Names", []) or []
-        pm_names = fields.get("PM Name", []) or []
-        all_names = assignee_names + pm_names
+    offset = None
 
-        is_match = any(
-            person_lower == n.strip().lower()
-            or person_lower in n.strip().lower()
-            or _fuzzy_match(person_lower, n)
-            for n in all_names if n
-        )
-        if is_match:
+    while True:
+        params = {"pageSize": 100, "filterByFormula": formula}
+        if offset:
+            params["offset"] = offset
+
+        data = _get(url, params=params)
+        for rec in data.get("records", []):
+            fields = rec.get("fields", {})
             project_ids = fields.get("Project", []) or []
             matched_project_ids.update(project_ids)
+
+        offset = data.get("offset")
+        if not offset:
+            break
+
+    # Fallback: if exact substring match found nothing, try a fuzzy pass
+    # over a lightweight fetch (names only, not full records) as a
+    # typo-tolerant second attempt.
+    if not matched_project_ids:
+        url_names_only = f"{_API_ROOT}/{requests.utils.quote(TABLE_TASKS)}"
+        person_lower = person_name.strip().lower()
+        offset = None
+        while True:
+            params = {
+                "pageSize": 100,
+                "fields[]": ["Assignee Names", "PM Name", "Project"],
+            }
+            if offset:
+                params["offset"] = offset
+            data = _get(url_names_only, params=params)
+            for rec in data.get("records", []):
+                fields = rec.get("fields", {})
+                names = (fields.get("Assignee Names", []) or []) + (fields.get("PM Name", []) or [])
+                if any(_fuzzy_match(person_lower, n) for n in names if n):
+                    matched_project_ids.update(fields.get("Project", []) or [])
+            offset = data.get("offset")
+            if not offset:
+                break
 
     return list(matched_project_ids)
 
