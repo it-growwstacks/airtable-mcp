@@ -1,4 +1,4 @@
-mcp[cli]
+mcp[cli]==1.28.1
 google-auth
 google-auth-httplib2
 google-api-python-client
