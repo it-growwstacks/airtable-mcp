@@ -327,6 +327,34 @@ def get_tasks_by_ids_unredacted(record_ids: list) -> list:
             results.append(_flatten(rec, "Tasks", redact=False))
     return results
 
+def find_projects_by_person(person_name: str) -> list:
+    """
+    Given an assignee or project manager's name (case-insensitive, fuzzy
+    match), returns the distinct set of Project record IDs they appear on,
+    found by scanning Tasks' Assignee Names / PM Name lookup fields.
+    """
+    person_lower = person_name.strip().lower()
+    all_tasks = _fetch_all_records(TABLE_TASKS)
+
+    matched_project_ids = set()
+    for rec in all_tasks:
+        fields = rec.get("fields", {})
+        assignee_names = fields.get("Assignee Names", []) or []
+        pm_names = fields.get("PM Name", []) or []
+        all_names = assignee_names + pm_names
+
+        is_match = any(
+            person_lower == n.strip().lower()
+            or person_lower in n.strip().lower()
+            or _fuzzy_match(person_lower, n)
+            for n in all_names if n
+        )
+        if is_match:
+            project_ids = fields.get("Project", []) or []
+            matched_project_ids.update(project_ids)
+
+    return list(matched_project_ids)
+
 def validate_schema() -> None:
     checks = [
         (TABLE_CLIENTS, "Clients", {"Client Company Name", "Contact Person", "Client Status", "Projects"}),

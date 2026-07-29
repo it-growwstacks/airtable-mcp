@@ -30,10 +30,11 @@ try:
     from rate_limiter import check_rate_limit, RateLimitError
     from permissions import check_tool_permission, PermissionError
     from validators import (
-        GetClientInput, ListClientsInput, SearchClientsInput,
-        GetProjectInput, ListProjectsInput, GetClientProjectsInput,
-        SearchTasksInput, GetProjectTasksInput, GetProjectTeamInput,
-        validate_input, ValidationError,
+    GetClientInput, ListClientsInput, SearchClientsInput,
+    GetProjectInput, ListProjectsInput, GetClientProjectsInput,
+    SearchTasksInput, GetProjectTasksInput, GetProjectTeamInput,
+    GetPersonAssignmentsInput,
+    validate_input, ValidationError,
     )
     import airtable_client as at
     from airtable_client import AirtableError
@@ -293,6 +294,54 @@ def get_project_status(project_ref: str, ctx: Context) -> dict:
     except Exception:
         return _error_response(Errors.INTERNAL_ERROR)
 
+@mcp.tool()
+def get_person_assignments(person_name: str, ctx: Context) -> dict:
+    """Given an assignee or project manager's name (case-insensitive, fuzzy match), return every project they're on, each with its status and client name. Read-only, redacted."""
+    start = time.time()
+    inputs = {"person_name": person_name}
+    company_id = "unknown"
+    try:
+        company_id, _ = _authenticate_and_scope(ctx, "get_person_assignments")
+        validated = validate_input(GetPersonAssignmentsInput, inputs)
+
+        project_ids = at.find_projects_by_person(validated.person_name)
+        if not project_ids:
+            return {"person_name": validated.person_name, "count": 0, "projects": []}
+
+        results = []
+        for pid in project_ids:
+            prec = at._fetch_record_by_id(at.TABLE_PROJECTS, pid)
+            if not prec:
+                continue
+            pfields = prec.get("fields", {})
+            client_ids = pfields.get("Client", []) or []
+            client_name = None
+            if client_ids:
+                crec = at._fetch_record_by_id(at.TABLE_CLIENTS, client_ids[0])
+                if crec:
+                    cf = crec.get("fields", {})
+                    client_name = cf.get("Contact Person") or cf.get("Client Company Name")
+            results.append({
+                "project_name": pfields.get("Project Name"),
+                "project_status": pfields.get("Status"),
+                "client_name": client_name,
+            })
+
+        log_tool_call(company_id, "get_person_assignments", inputs, "success", int((time.time() - start) * 1000))
+        return {"person_name": validated.person_name, "count": len(results), "projects": results}
+
+    except AuthError as e:
+        return _error_response(e.error)
+    except PermissionError as e:
+        return _error_response(e.error)
+    except RateLimitError as e:
+        return _error_response(e.error, {"retry_after_seconds": e.retry_after})
+    except ValidationError as e:
+        return _error_response(e.error)
+    except AirtableError as e:
+        return _error_response(e.error)
+    except Exception:
+        return _error_response(Errors.INTERNAL_ERROR)
 
 @mcp.tool()
 def list_projects(status: str = "", ctx: Context = None) -> dict:

@@ -77,7 +77,12 @@ class GetClientProjectsInput(BaseModel):
     @classmethod
     def strip(cls, v): return v.strip()
 
+class GetPersonAssignmentsInput(BaseModel):
+    person_name: str = Field(min_length=1, max_length=200, description="Assignee or Project Manager name")
 
+    @field_validator("person_name")
+    @classmethod
+    def strip(cls, v): return v.strip()
 
 
 class SearchTasksInput(BaseModel):
